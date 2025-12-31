@@ -73,7 +73,19 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_null(&mut self) -> Result<JsonValue, String> {}
+    fn parse_null(&mut self) -> Result<JsonValue, String> {
+        let expected = "null";
+
+        for expected_char in expected.chars() {
+            match self.chars.next() {
+                Some(c) if c == expected_char => continue,
+                Some(c) => return Err(format!("Expected '{}', found '{}'", expected_char, c)),
+                None => return Err("Unexpected End of File while parsing null".to_string()),
+            }
+        }
+
+        Ok(JsonValue::Null)
+    }
 
     fn parse_number(&mut self) -> Result<JsonValue, String> {
         let mut num = String::new();

@@ -56,9 +56,24 @@ impl<'a> Parser<'a> {
 
     fn parse_null(&mut self) -> Result<JsonValue, String> {}
 
-    fn parse_object(&mut self) -> Result<JsonValue, String> {}
+    fn parse_number(&mut self) -> Result<JsonValue, String> {
+        let mut num = String::new();
+        while let Some(&c) = self.chars.peek() {
+            if matches!(c, '.' | '-' | 'e') || c.is_numeric() {
+                num.push(c);
+                self.chars.next();
+            } else {
+                break;
+            }
+        }
 
-    fn parse_number(&mut self) -> Result<JsonValue, String> {}
+        match num.parse::<f64>() {
+            Ok(n) => Ok(JsonValue::Number(n)),
+            Err(_) => Err("Error parsing the value to float, invalid input".to_string()),
+        }
+    }
+
+    fn parse_object(&mut self) -> Result<JsonValue, String> {}
 }
 
 fn main() {

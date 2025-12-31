@@ -1,3 +1,4 @@
+use std::any::type_name;
 use std::collections::HashMap;
 use std::iter::Peekable;
 use std::str::Chars;
@@ -14,6 +15,10 @@ pub enum JsonValue {
 
 pub struct Parser<'a> {
     chars: Peekable<Chars<'a>>,
+}
+
+fn type_of<T>(_: T) -> &'static str {
+    type_name::<T>()
 }
 
 impl<'a> Parser<'a> {
@@ -50,7 +55,36 @@ impl<'a> Parser<'a> {
 
     fn parse_string(&mut self) -> Result<JsonValue, String> {}
 
-    fn parse_array(&mut self) -> Result<JsonValue, String> {}
+    fn parse_array(&mut self) -> Result<JsonValue, String> {
+        if self.chars.next() != Some('[') {
+            return Err("Expected '['".to_string());
+        }
+
+        let mut array_items: Vec<JsonValue> = Vec::new();
+        self.remove_whitespace();
+        if let Some(&c) = self.chars.peek() {
+            if c == ']' {
+                self.chars.next(); // Eat the closing ']'
+                return Ok(JsonValue::Array(array_items));
+            }
+        }
+
+        loop {
+            self.remove_whitespace();
+
+            let value = self.parse()?;
+            array_items.push(value);
+
+            match self.chars.next() {
+                Some(']') => break,
+                Some(',') => continue,
+                Some(c) => return Err(format!("Expected ',' or ']', found '{}'", c)),
+                None => return Err("Unexpected End of File inside array".to_string()),
+            }
+        }
+
+        Ok(JsonValue::Array(array_items))
+    }
 
     fn parse_bool(&mut self) -> Result<JsonValue, String> {
         let mut bool_value = String::new();

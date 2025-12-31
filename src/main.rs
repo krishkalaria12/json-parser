@@ -1,5 +1,6 @@
 use std::any::type_name;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -141,11 +142,77 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_object(&mut self) -> Result<JsonValue, String> {}
+    fn parse_object(&mut self) -> Result<JsonValue, String> {
+        if self.chars.next() != Some('{') {
+            return Err("Expected '{'".to_string());
+        }
+
+        let mut map = HashMap::new();
+
+        self.remove_whitespace();
+        if let Some(&c) = self.chars.peek() {
+            if c == '}' {
+                self.chars.next(); // Eat the '}'
+                return Ok(JsonValue::Object(map));
+            }
+        }
+
+        // Key -> Colon -> Value
+        loop {
+            self.remove_whitespace();
+
+            // Parse the Key (Must be a string)
+            let key = match self.parse_string()? {
+                JsonValue::String(s) => s,
+                _ => return Err("Object keys must be strings".to_string()),
+            };
+
+            self.remove_whitespace();
+
+            // Expect Colon ':'
+            if self.chars.next() != Some(':') {
+                return Err("Expected ':'".to_string());
+            }
+
+            self.remove_whitespace();
+
+            // Parse the Value
+            let value = self.parse()?;
+            map.insert(key, value);
+
+            self.remove_whitespace();
+
+            // Check "What's Next?" (Comma or End?)
+            match self.chars.next() {
+                Some('}') => break,
+                Some(',') => {
+                    continue;
+                }
+                Some(c) => return Err(format!("Expected ',' or '}}', found '{}'", c)),
+                None => return Err("Unexpected End of File inside object".to_string()),
+            }
+        }
+
+        Ok(JsonValue::Object(map))
+    }
 }
 
 fn main() {
     let json = r#" { "key": "value", "list": [1, 2, 3] } "#;
     let mut parser = Parser::new(json);
-    println!("{:?}", parser.parse());
+
+    let mapp = match parser.parse() {
+        Ok(JsonValue::Object(map)) => {
+            println!("Success!");
+            map
+        }
+        Ok(_) => {
+            println!("Parsed valid JSON, but it wasn't an Object.");
+            HashMap::new()
+        }
+        Err(e) => {
+            println!("Error: {}", e);
+            HashMap::new()
+        }
+    };
 }

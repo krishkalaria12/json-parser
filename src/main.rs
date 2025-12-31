@@ -1,6 +1,5 @@
 use std::any::type_name;
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -16,10 +15,6 @@ pub enum JsonValue {
 
 pub struct Parser<'a> {
     chars: Peekable<Chars<'a>>,
-}
-
-fn type_of<T>(_: T) -> &'static str {
-    type_name::<T>()
 }
 
 impl<'a> Parser<'a> {
@@ -54,7 +49,67 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_string(&mut self) -> Result<JsonValue, String> {}
+    fn parse_string(&mut self) -> Result<JsonValue, String> {
+        if self.chars.next() != Some('"') {
+            return Err("Expected '\"'".to_string());
+        }
+
+        let mut string_value = String::new();
+
+        while let Some(&c) = self.chars.peek() {
+            match c {
+                '"' => {
+                    self.chars.next(); // Eat the closing quote
+                    return Ok(JsonValue::String(string_value));
+                }
+                '\\' => {
+                    self.chars.next();
+                    match self.chars.next() {
+                        Some('"') => string_value.push('"'),
+                        Some('\\') => string_value.push('\\'),
+                        Some('/') => string_value.push('/'),
+                        Some('b') => string_value.push('\x08'), // Backspace
+                        Some('f') => string_value.push('\x0c'), // Form feed
+                        Some('n') => string_value.push('\n'),
+                        Some('r') => string_value.push('\r'),
+                        Some('t') => string_value.push('\t'),
+                        Some('u') => {
+                            // Unicode: Parse next 4 hex digits
+                            let mut hex_str = String::new();
+                            for _ in 0..4 {
+                                if let Some(hex_char) = self.chars.next() {
+                                    hex_str.push(hex_char);
+                                } else {
+                                    return Err("Unexpected EOF in unicode escape".to_string());
+                                }
+                            }
+
+                            if let Ok(code) = u32::from_str_radix(&hex_str, 16) {
+                                if let Some(ch) = char::from_u32(code) {
+                                    string_value.push(ch);
+                                } else {
+                                    return Err(format!(
+                                        "Invalid unicode character: \\u{}",
+                                        hex_str
+                                    ));
+                                }
+                            } else {
+                                return Err(format!("Invalid hex code: \\u{}", hex_str));
+                            }
+                        }
+                        Some(c) => return Err(format!("Invalid escape sequence: \\{}", c)),
+                        None => return Err("Unexpected EOF after backslash".to_string()),
+                    }
+                }
+                normal_char => {
+                    self.chars.next(); // Eat the char
+                    string_value.push(normal_char);
+                }
+            }
+        }
+
+        Err("Unexpected End of File (Missing closing quote)".to_string())
+    }
 
     fn parse_array(&mut self) -> Result<JsonValue, String> {
         if self.chars.next() != Some('[') {
@@ -215,4 +270,6 @@ fn main() {
             HashMap::new()
         }
     };
+
+    println!("{:?}", mapp);
 }

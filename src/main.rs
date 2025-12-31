@@ -52,7 +52,26 @@ impl<'a> Parser<'a> {
 
     fn parse_array(&mut self) -> Result<JsonValue, String> {}
 
-    fn parse_bool(&mut self) -> Result<JsonValue, String> {}
+    fn parse_bool(&mut self) -> Result<JsonValue, String> {
+        let mut bool_value = String::new();
+        while let Some(&c) = self.chars.peek() {
+            if c.is_alphabetic() {
+                bool_value.push(c);
+                self.chars.next();
+            } else {
+                break;
+            }
+        }
+
+        match bool_value.as_str() {
+            "true" => Ok(JsonValue::Bool(true)),
+            "false" => Ok(JsonValue::Bool(false)),
+            _ => Err(format!(
+                "Invalid syntax: expected 'true' or 'false', found '{}'",
+                bool_value
+            )),
+        }
+    }
 
     fn parse_null(&mut self) -> Result<JsonValue, String> {}
 
@@ -69,7 +88,10 @@ impl<'a> Parser<'a> {
 
         match num.parse::<f64>() {
             Ok(n) => Ok(JsonValue::Number(n)),
-            Err(_) => Err("Error parsing the value to float, invalid input".to_string()),
+            _ => Err(format!(
+                "Invalid syntax: expected to be a number, found '{}'",
+                num
+            )),
         }
     }
 

@@ -1,3 +1,68 @@
+use std::collections::HashMap;
+use std::iter::Peekable;
+use std::str::Chars;
+
+#[derive(Debug, PartialEq)]
+pub enum JsonValue {
+    Null,
+    Bool(bool),
+    Number(f64),
+    String(String),
+    Array(Vec<JsonValue>),
+    Object(HashMap<String, JsonValue>),
+}
+
+pub struct Parser<'a> {
+    chars: Peekable<Chars<'a>>,
+}
+
+impl<'a> Parser<'a> {
+    pub fn new(input: &'a str) -> Self {
+        Self {
+            chars: input.chars().peekable(),
+        }
+    }
+
+    fn remove_whitespace(&mut self) {
+        while let Some(&c) = self.chars.peek() {
+            if c.is_whitespace() {
+                self.chars.next();
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub fn parse(&mut self) -> Result<JsonValue, String> {
+        self.remove_whitespace();
+
+        match self.chars.peek() {
+            Some(&c) if c == '{' => self.parse_object(),
+            Some(&c) if c == '"' => self.parse_string(),
+            Some(&c) if c == '[' => self.parse_array(),
+            Some(&c) if c.is_numeric() => self.parse_number(),
+            Some(&c) if c == 't' || c == 'f' => self.parse_bool(),
+            Some(&c) if c == 'n' => self.parse_null(),
+            Some(_) => Err("Unexpected character".to_string()),
+            None => Err("EOF".to_string()),
+        }
+    }
+
+    fn parse_string(&mut self) -> Result<JsonValue, String> {}
+
+    fn parse_array(&mut self) -> Result<JsonValue, String> {}
+
+    fn parse_bool(&mut self) -> Result<JsonValue, String> {}
+
+    fn parse_null(&mut self) -> Result<JsonValue, String> {}
+
+    fn parse_object(&mut self) -> Result<JsonValue, String> {}
+
+    fn parse_number(&mut self) -> Result<JsonValue, String> {}
+}
+
 fn main() {
-    println!("Hello, world!");
+    let json = r#" { "key": "value", "list": [1, 2, 3] } "#;
+    let mut parser = Parser::new(json);
+    println!("{:?}", parser.parse());
 }
